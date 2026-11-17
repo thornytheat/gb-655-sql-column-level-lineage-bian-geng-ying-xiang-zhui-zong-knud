@@ -20,6 +20,14 @@ DEFAULT_DB = PROJECT_ROOT / "data" / "lineageguard.sqlite"
 
 RULESET_VERSION = os.environ.get("LINEAGEGUARD_RULESET", "fm-2026.11.1")
 
+# 节点身份：归档带上这个值，恢复后仍按它认来源，不按本地库改写
+SOURCE_ID = (os.environ.get("LINEAGEGUARD_SOURCE_ID", "").strip()
+             or "lineageguard-local")
+SOURCE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$")
+
+# 归档包上限：整包先校验再落库，过大的包直接拒绝
+MAX_ARCHIVE_BYTES = int(os.environ.get("LINEAGEGUARD_MAX_ARCHIVE_BYTES", str(8 * 1024 * 1024)))
+
 # 采信层：编码回退链，首个能解码的胜出
 ENCODING_CHAIN = ("utf-8-sig", "utf-8", "gb18030")
 

@@ -115,7 +115,7 @@ def execute(old_file: str = config.DEFAULT_OLD, new_file: str = config.DEFAULT_N
         "new_schema_id": new_snapshot["schema_id"],
         "version_label_old": old_snapshot["version_label"],
         "version_label_new": new_snapshot["version_label"],
-        "version_seq": store.next_version_seq(),
+        "version_seq": 0,
         "input_sha256": input_sha,
         "digests": digests,
         "input_names": names,
@@ -148,9 +148,20 @@ def execute(old_file: str = config.DEFAULT_OLD, new_file: str = config.DEFAULT_N
         "quarantine_new": new_snapshot["diagnostics"],
         "warnings": warnings,
         "reused": False,
+        "origin": "local",
+        "source_id": config.SOURCE_ID,
     }
-    run["summary"] = history.summary_of(run)
-    store.save_run(run)
+    # 顺序号与版本号在落库事务里取：并发恢复和并发跑批共用一条本地顺序
+    if not store.save_local_run(run, history.summary_of):
+        existing = store.find_run_by_key(key)
+        if existing is not None:
+            reused = dict(existing)
+            reused["reused"] = True
+            return reused
+        raise errors.Conflict(
+            "批次键或运行号已被占用，回读已存在批次",
+            detail={"reason": "RUN_CONFLICT", "run_id": run["run_id"]},
+        )
     return run
 
 

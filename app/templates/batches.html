@@ -24,7 +24,7 @@
       <tbody>
         {% for item in runs %}
         <tr>
-          <td class="name">{{ item.run_id }}</td>
+          <td class="name">{{ item.run_id }}{% if item.origin == 'imported' %} <span class="st st-warn">导入</span>{% endif %}</td>
           <td class="num">{{ item.version_seq }}</td>
           <td class="name">{{ item.version_label_old }} → {{ item.version_label_new }}</td>
           <td class="name">{{ item.effective_from|day }}</td>
@@ -38,6 +38,7 @@
       </tbody>
     </table>
   </div>
+  <p class="lede">恢复批次标「导入」，来源身份在<a class="back" href="/archives">灾备归档</a>页逐条标明。</p>
   {% else %}
   <p class="empty">还没有批次。</p>
   {% endif %}

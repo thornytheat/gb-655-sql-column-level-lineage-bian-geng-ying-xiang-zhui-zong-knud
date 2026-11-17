@@ -17,6 +17,7 @@ from app.modules.m5_impact import handler as m5_handler
 from app.modules.m6_batches import handler as m6_handler
 from app.modules.m6_batches import service as batch_service
 from app.modules.m7_migration import handler as m7_handler
+from app.modules.m8_archive import handler as m8_handler
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -25,6 +26,10 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 async def lifespan(_: FastAPI):
     store.init_db()
     batch_service.ensure_seeded()
+    # 中断过的导入在启动时续上；半包在完成前不进历史
+    from app.modules.m8_archive import restore as archive_restore
+
+    archive_restore.replay_pending()
     yield
 
 
@@ -33,7 +38,7 @@ app = FastAPI(title=config.APP_TITLE, docs_url="/docs", redoc_url=None,
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 for module_handler in (m1_handler, m2_handler, m3_handler, m4_handler,
-                       m5_handler, m6_handler, m7_handler):
+                       m5_handler, m6_handler, m7_handler, m8_handler):
     app.include_router(module_handler.router)
 
 errors.install(app)
@@ -47,7 +52,8 @@ def health() -> dict:
         "app": config.APP_NAME,
         "ruleset": config.RULESET_VERSION,
         "db": str(store.db_path()),
-        "runs": store.count_runs(),
+        "runs": store.count_local_runs(),
+        "imported_runs": store.count_imported_runs(),
         "run_id": (run or {}).get("run_id"),
         "window_semantics": config.WINDOW_SEMANTICS,
     }

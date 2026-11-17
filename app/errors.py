@@ -48,6 +48,27 @@ class Conflict(FieldmapError):
     label = "记录冲突"
 
 
+class ArchiveRejected(FieldmapError):
+    """归档包整包拒绝：坏包不进库，也不留半截导入。"""
+    status = 422
+    code = "ARCHIVE_REJECTED"
+    label = "归档包被拒绝"
+
+
+class ArchiveConflict(FieldmapError):
+    """同源同号异内容：隔离成冲突，不覆盖、不并档。"""
+    status = 409
+    code = "ARCHIVE_CONFLICT"
+    label = "归档身份冲突"
+
+
+class ImportInterrupted(FieldmapError):
+    """导入停在半路：批次不可见，可原样重放。"""
+    status = 409
+    code = "IMPORT_INTERRUPTED"
+    label = "导入中断"
+
+
 def install(app: FastAPI) -> None:
     @app.exception_handler(FieldmapError)
     async def _handle_domain(_: Request, exc: FieldmapError) -> JSONResponse:

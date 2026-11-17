@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}灾备归档 · lineageguard{% endblock %}
+{% block body %}
+<section class="doc-section">
+  <h1>灾备归档</h1>
+  <p class="lede">本节点 <span class="mono">{{ source_id }}</span>　导入批次 <span class="mono">{{ imported|length }}</span>　未完成导入 <span class="mono">{{ pending|length }}</span>　冲突 <span class="mono">{{ conflicts|length }}</span></p>
+  <div class="actions">
+    {% if current %}
+    <a class="btn" href="/api/export/archive.json">归档当前批次</a>
+    <a class="btn ghost" href="/api/export/archive-manifest.json">归档清单 JSON</a>
+    {% endif %}
+    <a class="btn ghost" href="/api/archives">历史与冲突 JSON</a>
+    <span class="flash" data-flash></span>
+  </div>
+  <div class="actions">
+    <input type="file" accept=".json,application/json" data-archive-file aria-label="归档包">
+    <button type="button" data-action="restore-archive">恢复归档</button>
+    <button type="button" class="ghost" data-action="replay-imports">续跑未完成导入</button>
+  </div>
+  <p class="lede">恢复保留来源身份与原版本号，另分配本地顺序；坏包整包拒绝，同源同号异内容隔离为冲突。</p>
+</section>
+
+<section class="doc-section">
+  <h2><span class="clause">1</span>当前批次</h2>
+  {% if current %}
+  <dl class="ledger">
+    <div><dt>批次</dt><dd class="name">{{ current.run_id }}</dd></div>
+    <div><dt>来源身份</dt><dd class="name">{{ current.source_id or '本地' }}</dd></div>
+    <div><dt>来源版本号</dt><dd>{{ current.source_version_seq or current.version_seq }}</dd></div>
+    <div><dt>本地顺序</dt><dd>{{ current.local_seq }}</dd></div>
+    <div><dt>版本</dt><dd class="name">{{ current.version_label_old }} → {{ current.version_label_new }}</dd></div>
+    <div><dt>账</dt><dd>{% if ledger_current.balanced.all %}<span class="st st-ok">平</span>{% else %}<span class="st st-bad">不平</span>{% endif %}</dd></div>
+  </dl>
+  {% else %}
+  <p class="empty">还没有当前批次。</p>
+  {% endif %}
+</section>
+
+<section class="doc-section">
+  <h2><span class="clause">2</span>已恢复批次</h2>
+  {% if imported %}
+  <div class="wrap-scroll">
+    <table>
+      <caption>导入批次<sup class="fn">1</sup></caption>
+      <thead>
+        <tr><th>批次</th><th>来源</th><th class="num">来源版本号</th><th class="num">本地顺序</th>
+          <th>版本</th><th>归档摘要</th><th>恢复时间</th></tr>
+      </thead>
+      <tbody>
+        {% for item in imported %}
+        <tr>
+          <td class="name">{{ item.run_id }}</td>
+          <td class="name">{{ item.source_id }}</td>
+          <td class="num">{{ item.source_version_seq }}</td>
+          <td class="num">{{ item.local_seq }}</td>
+          <td class="name">{{ item.version_label_old }} → {{ item.version_label_new }}</td>
+          <td class="mono">{{ (item.archive_sha256 or '')[:12] }}</td>
+          <td class="name">{{ item.imported_at|ts }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">还没有恢复过批次。</p>
+  {% endif %}
+</section>
+
+<section class="doc-section">
+  <h2><span class="clause">3</span>未完成导入</h2>
+  {% if pending %}
+  <table>
+    <thead><tr><th>导入号</th><th>来源</th><th class="num">来源版本号</th><th>状态</th><th>说明</th></tr></thead>
+    <tbody>
+      {% for item in pending %}
+      <tr>
+        <td class="mono">{{ item.import_id }}</td>
+        <td class="name">{{ item.source_id }}</td>
+        <td class="num">{{ item.source_version_seq }}</td>
+        <td><span class="st st-warn">{{ item.status }}</span></td>
+        <td>{{ item.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="lede">批次未完成前不会出现在历史里，可用同一归档重放续上。</p>
+  {% else %}
+  <p class="empty">没有未完成的导入。</p>
+  {% endif %}
+</section>
+
+<section class="doc-section">
+  <h2><span class="clause">4</span>身份冲突</h2>
+  {% if conflicts %}
+  <table>
+    <thead><tr><th>来源</th><th class="num">来源版本号</th><th>已有批次</th><th>来件批次</th><th>说明</th></tr></thead>
+    <tbody>
+      {% for item in conflicts %}
+      <tr>
+        <td class="name">{{ item.source_id }}</td>
+        <td class="num">{{ item.source_version_seq }}</td>
+        <td class="name">{{ item.existing_run_id or '—' }}</td>
+        <td class="name">{{ item.incoming_run_id or '—' }}</td>
+        <td>{{ item.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">没有冲突。</p>
+  {% endif %}
+</section>
+
+<aside class="notes">
+  <ol class="footnotes">
+    <li>恢复保留来源身份与原版本号，另分配本地顺序。<a class="back" href="#main">↩</a></li>
+    <li>同源同号异内容只隔离成冲突，不覆盖原记录。<a class="back" href="#main">↩</a></li>
+  </ol>
+</aside>
+{% endblock %}

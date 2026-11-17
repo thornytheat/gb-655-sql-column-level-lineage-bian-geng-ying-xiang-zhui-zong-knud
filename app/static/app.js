@@ -17,6 +17,24 @@ const ACTIONS = {
       : `新批次 ${run.run_id} 序号 ${run.version_seq}`;
   },
 
+  async 'restore-archive'() {
+    const input = document.querySelector('[data-archive-file]');
+    if (!input || !input.files || !input.files[0]) {
+      throw new Error('先选一个归档包');
+    }
+    const body = await input.files[0].arrayBuffer();
+    const result = await request('/api/archives/restore', body, 'application/json');
+    if (result.status === 'duplicate') {
+      return `同一归档已入过，回读批次 ${result.run_id}`;
+    }
+    return `已恢复 ${result.run_id}　本地顺序 ${result.local_seq}　来源 ${result.source.source_id}#${result.source.source_version_seq}`;
+  },
+
+  async 'replay-imports'() {
+    const result = await request('/api/archives/replay', {});
+    return `续跑 ${result.results.length} 条`;
+  },
+
   async 'compare-types'() {
     const oldValue = document.getElementById('old-type');
     const newValue = document.getElementById('new-type');
@@ -33,11 +51,17 @@ const ACTIONS = {
   },
 };
 
-async function request(url, body) {
+async function request(url, body, contentType) {
+  let payloadBody = body;
+  let type = contentType;
+  if (!type) {
+    type = 'application/json';
+    payloadBody = JSON.stringify(body || {});
+  }
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {}),
+    headers: { 'Content-Type': type },
+    body: payloadBody,
   });
   const text = await response.text();
   let payload = null;
@@ -72,7 +96,7 @@ document.addEventListener('click', async (event) => {
   try {
     const message = await handler(button);
     flash(target, message || '完成', false);
-    if (name === 'run') {
+    if (name === 'run' || name === 'restore-archive' || name === 'replay-imports') {
       setTimeout(() => window.location.reload(), 400);
     }
   } catch (error) {

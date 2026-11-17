@@ -9,7 +9,8 @@ from app import config, store
 from app.modules.m1_intake import ddl, reader, sheet
 
 
-def _schema_id(version_label: str, fields: list[dict]) -> str:
+def schema_id_of(version_label: str, fields: list[dict]) -> str:
+    """结构快照身份：只看版本标签与字段清单，来源路径与时间不参与。"""
     canonical = json.dumps(
         {
             "version": version_label,
@@ -23,6 +24,9 @@ def _schema_id(version_label: str, fields: list[dict]) -> str:
         separators=(",", ":"),
     )
     return "sch-" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
+
+
+_schema_id = schema_id_of
 
 
 def _stats(diagnostics: list[dict], parsed_columns: int, accepted: int, tables: int) -> dict:
